@@ -22,7 +22,7 @@ def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='admin0077',
+        password='Siddhivinayak@8',
         database='GAIA',
     )
     return connection
@@ -116,6 +116,15 @@ def get_annotator_steps(task_id):
     connection.close()
     return result
 
+def reset_attempts():
+    connection = connect_mysql()
+    cursor = connection.cursor()
+    query = "UPDATE METADATA SET Number_of_Attempts = 0"
+    cursor.execute(query)
+    connection.commit()
+    cursor.close()
+    connection.close()
+
 def clean_text(text):
     # Remove extra spaces, special characters, normalize punctuation
     text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with a single space
@@ -138,24 +147,45 @@ def cosine_similarity_embeddings(openai_answer, database_answer):
     
     return similarity_score
 
-def compare_answers(openai_answer, database_answer, threshold=0.8):
-    # Step 1: Check if database answer is a single word and if it appears in the generated answer
+def update_attempts_and_validation(task_id, validated):
+    connection = connect_mysql()
+    cursor = connection.cursor()
+    query = """
+    UPDATE METADATA 
+    SET Number_of_Attempts = Number_of_Attempts + 1, Validated = %s 
+    WHERE task_id = %s
+    """
+    cursor.execute(query, (validated, task_id))
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
+    # Check if database answer is a single word and if it appears in the generated answer
     database_answer_cleaned = clean_text(database_answer)
-    
-    if len(database_answer_cleaned.split()) == 1:  # If the database answer is just one word
+    if len(database_answer_cleaned.split()) == 1:
         if database_answer_cleaned in clean_text(openai_answer):
-            # If the single-word database answer exists in the OpenAI answer, return True
+            update_attempts_and_validation(task_id, 'Yes')
             st.write("Exact match found for single-word database answer.")
             return True
     
-    # Step 2: Fall back to cosine similarity if no direct match was found
+    # Fall back to cosine similarity if no direct match was found
     similarity = cosine_similarity_embeddings(openai_answer, database_answer)
-    return similarity >= threshold
+    if similarity >= threshold:
+        update_attempts_and_validation(task_id, 'Yes')
+        return True
+    
+    # If no match
+    update_attempts_and_validation(task_id, 'No')
+    return False
 
 # Streamlit main page
 def main():
     st.set_page_config(page_title="Task Viewer and OpenAI Answer", layout="wide")
 
+    # Reset the Number_of_Attempts to 0 when the app starts
+    reset_attempts()  # Reset attempts each time the app restarts
+    
     # Initialize session state
     if 'page' not in st.session_state:
         st.session_state.page = 'main'
@@ -288,7 +318,7 @@ def main_page():
                 database_answer = database_result[0]
                 st.session_state.database_answer = database_answer
 
-                is_correct = compare_answers(openai_answer, database_answer)
+                is_correct = compare_answers(openai_answer, database_answer, st.session_state.selected_task_id)
                 st.session_state.is_correct = is_correct
 
             st.session_state.page = 'compare_page'
@@ -354,7 +384,7 @@ def regenerate_answer_page():
 
                 # Compare regenerated answer with the database answer
                 if 'database_answer' in st.session_state:
-                    is_correct = compare_answers(regenerated_answer, st.session_state.database_answer)
+                    is_correct = compare_answers(regenerated_answer, st.session_state.database_answer,st.session_state.selected_task_id)
                     if is_correct:
                         st.success("The regenerated answer matches the database answer.")
                     else:
