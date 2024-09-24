@@ -6,13 +6,17 @@ from io import BytesIO
 from PIL import Image
 import zipfile
 from PyPDF2 import PdfReader
+import openai
+import os
+
+openai.api_key = "sk-rcRLfezEqYqT76yYsFtT9E_QUWGBgheWXZOMVHpUNvT3BlbkFJh92hu_PqcVOaUo75GwdCrT4TJOUumpb65DYqgMRzgA"
 
 # Mysql connection
 def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='admin0077',
+        password='Siddhivinayak@8',
         database='GAIA',
     )
     return connection
@@ -86,6 +90,21 @@ def display_file_from_s3(file_key):
     else:
         st.write("Unsupported file type:", file_key)
 
+def get_database_answer(task_id):
+    connection = connect_mysql()
+    cursor = connection.cursor()
+    query = "SELECT final_answer, annotator_steps FROM METADATA WHERE task_id = %s"
+    cursor.execute(query, (task_id,))
+    result = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    return result
+
+def compare_answers(openai_answer, database_answer):
+    # Implement your comparison logic here
+    # This is a simple example; you might want to use more sophisticated comparison methods
+    return openai_answer.strip().lower() == database_answer.strip().lower()
+
 # JavaScript function to set query parameters
 def set_query_params(page):
     st.write(f"""
@@ -105,7 +124,12 @@ def get_current_page():
     return query_params.get('page', ['main'])[0]
 
 # Streamlit main page
-def main_page():
+def main():
+    st.set_page_config(page_title="Task Viewer and OpenAI Answer", layout="wide")
+
+    # Initialize session state
+    if 'page' not in st.session_state:
+        st.session_state.page = 'main'
     st.markdown("""
         <style>
         body {
@@ -145,7 +169,13 @@ def main_page():
         }
         </style>
     """, unsafe_allow_html=True)
+    
+    if st.session_state.page == 'main':
+        main_page()
+    elif st.session_state.page == 'new_page':
+        new_page()
 
+def main_page():
     st.title("Task Viewer")
     
     # Fetch questions from MySQL
@@ -192,26 +222,87 @@ def main_page():
                 unsafe_allow_html=True
             )
 
+        st.session_state.selected_question = selected_question
+        st.session_state.associated_files = file_names
+        st.session_state.selected_task_id = selected_task_id
+
     # Add buttons for navigation
-    if st.button("Go to New Page"):
-        go_to_page('new_page')
+    if st.button("Open AI Answer"):
+        st.session_state.page = 'new_page'
+        st.rerun()
 
 def new_page():
-    st.title("New Page")
-    st.write("This is a new page!")
+    st.title("Open AI Answer and Comparison")
+    
+    if 'selected_question' in st.session_state:
+        st.write(f"**Selected Question:** {st.session_state.selected_question}")
+
+        if 'associated_files' in st.session_state and st.session_state.associated_files:
+            st.write("**Associated Files:**")
+            for file in st.session_state.associated_files:
+                st.write(f"- {file}")
+
+        if st.button("Generate Answer"):
+            # Prepare the prompt for OpenAI
+            prompt = f"Question: {st.session_state.selected_question}\n"
+            if 'associated_files' in st.session_state and st.session_state.associated_files:
+                prompt += "Associated files:\n"
+                for file in st.session_state.associated_files:
+                    prompt += f"- {file}\n"
+            prompt += "\nPlease provide an answer to the question based on the available information."
+
+            # Call OpenAI API
+            try:
+                response = openai.Completion.create(
+                    engine="gpt-3.5-turbo-instruct",
+                    prompt=prompt,
+                    max_tokens=150
+                ) 
+                openai_answer = response.choices[0].text.strip()
+                st.write("**OpenAI Answer:**")
+                st.write(openai_answer)
+
+                # Fetch database answer and annotator steps
+                database_result = get_database_answer(st.session_state.selected_task_id)
+                if database_result:
+                    database_answer, annotator_steps = database_result
+                    st.write("**Database Answer:**")
+                    st.write(database_answer)
+
+                    # Compare answers
+                    is_correct = compare_answers(openai_answer, database_answer)
+                    if is_correct:
+                        st.success("The OpenAI answer matches the database answer.")
+                    else:
+                        st.error("The OpenAI answer does not match the database answer.")
+                        st.write("**Annotator Steps:**")
+                        st.write(annotator_steps)
+
+                    # Provide feedback to OpenAI
+                        feedback_prompt = f"The correct answer is: {database_answer}\n"
+                        feedback_prompt += f"Annotator steps: {annotator_steps}\n"
+                        feedback_prompt += "Please provide an improved answer based on this feedback."
+
+                        improved_response = openai.Completion.create(
+                            engine="gpt-3.5-turbo-instruct",
+                            prompt=feedback_prompt,
+                            max_tokens=200
+                        )
+                        improved_answer = improved_response.choices[0].text.strip()
+                        st.write("**Improved OpenAI Answer:**")
+                        st.write(improved_answer)
+                else:
+                    st.warning("No database answer found for this question.")
+
+            except Exception as e:
+                st.error(f"An error occurred while generating the answer: {str(e)}")
+    else:
+        st.write("No question selected. Please go back and select a question.")
 
     # Button to go back to main page
     if st.button("Go Back"):
-        go_to_page('main')
-
-# Main function to control navigation
-def main():
-    current_page = get_current_page()
-
-    if current_page == 'main':
-        main_page()
-    elif current_page == 'new_page':
-        new_page()
+        st.session_state.page = 'main'
+        st.rerun()
 
 if __name__ == "__main__":
     main()
