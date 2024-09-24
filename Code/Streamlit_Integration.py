@@ -7,7 +7,13 @@ from PIL import Image
 import zipfile
 from PyPDF2 import PdfReader
 import openai
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 import os
+import re
+
+# Load pre-trained model for sentence embeddings
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 openai.api_key = "sk-rcRLfezEqYqT76yYsFtT9E_QUWGBgheWXZOMVHpUNvT3BlbkFJh92hu_PqcVOaUo75GwdCrT4TJOUumpb65DYqgMRzgA"
 
@@ -16,7 +22,7 @@ def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='Siddhivinayak@8',
+        password='admin0077',
         database='GAIA',
     )
     return connection
@@ -93,35 +99,58 @@ def display_file_from_s3(file_key):
 def get_database_answer(task_id):
     connection = connect_mysql()
     cursor = connection.cursor()
-    query = "SELECT final_answer, annotator_steps FROM METADATA WHERE task_id = %s"
+    query = "SELECT final_answer FROM METADATA WHERE task_id = %s"
     cursor.execute(query, (task_id,))
     result = cursor.fetchone()
     cursor.close()
     connection.close()
     return result
 
-def compare_answers(openai_answer, database_answer):
-    # Implement your comparison logic here
-    # This is a simple example; you might want to use more sophisticated comparison methods
-    return openai_answer.strip().lower() == database_answer.strip().lower()
+def get_annotator_steps(task_id):
+    connection = connect_mysql()
+    cursor = connection.cursor()
+    query = "SELECT annotator_steps FROM METADATA WHERE task_id = %s"
+    cursor.execute(query, (task_id,))
+    result = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    return result
 
-# JavaScript function to set query parameters
-def set_query_params(page):
-    st.write(f"""
-        <script>
-            const queryParams = new URLSearchParams(window.location.search);
-            queryParams.set("page", "{page}");
-            window.history.replaceState(null, null, "?" + queryParams.toString());
-        </script>
-    """, unsafe_allow_html=True)
+def clean_text(text):
+    # Remove extra spaces, special characters, normalize punctuation
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with a single space
+    text = text.strip()  # Remove leading/trailing spaces
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
+    return text.lower()
 
-# Navigation functions
-def go_to_page(page):
-    set_query_params(page)
+def cosine_similarity_embeddings(openai_answer, database_answer):
+    # Preprocess both answers
+    openai_cleaned = clean_text(openai_answer)
+    database_cleaned = clean_text(database_answer)
+    
+    # Generate sentence embeddings
+    openai_embedding = model.encode([openai_cleaned])
+    database_embedding = model.encode([database_cleaned])
+    
+    # Compute cosine similarity
+    similarity = cosine_similarity(openai_embedding, database_embedding)
+    similarity_score = similarity[0][0]
+    
+    return similarity_score
 
-def get_current_page():
-    query_params = st.query_params
-    return query_params.get('page', ['main'])[0]
+def compare_answers(openai_answer, database_answer, threshold=0.8):
+    # Step 1: Check if database answer is a single word and if it appears in the generated answer
+    database_answer_cleaned = clean_text(database_answer)
+    
+    if len(database_answer_cleaned.split()) == 1:  # If the database answer is just one word
+        if database_answer_cleaned in clean_text(openai_answer):
+            # If the single-word database answer exists in the OpenAI answer, return True
+            st.write("Exact match found for single-word database answer.")
+            return True
+    
+    # Step 2: Fall back to cosine similarity if no direct match was found
+    similarity = cosine_similarity_embeddings(openai_answer, database_answer)
+    return similarity >= threshold
 
 # Streamlit main page
 def main():
@@ -130,11 +159,24 @@ def main():
     # Initialize session state
     if 'page' not in st.session_state:
         st.session_state.page = 'main'
+    if st.session_state.page == 'main':
+        main_page()
+    elif st.session_state.page == 'compare_page':
+        compare_page()
+    elif st.session_state.page == 'regenerate_page':
+        regenerate_answer_page()
+
+def main_page():
+    # Custom CSS for black background and white text
     st.markdown("""
         <style>
         body {
             background-color: #121212;
             color: white;
+        }
+        .stSelectbox label {
+            font-size: 2.2em !important;
+            color: white !important;
         }
         .stTextInput>div>div>input, .stSelectbox>div>div>div>input {
             color: black;
@@ -167,17 +209,16 @@ def main():
         .stMarkdown h2 {
             color: #FFD700;
         }
+        
+        label {
+            font-size: 1.25em; /* Adjust the font size (4 points larger) */
+            color: white;      /* White color for the label */
+        }
         </style>
     """, unsafe_allow_html=True)
-    
-    if st.session_state.page == 'main':
-        main_page()
-    elif st.session_state.page == 'new_page':
-        new_page()
 
-def main_page():
     st.title("Task Viewer")
-    
+
     # Fetch questions from MySQL
     question_data = get_questions()
 
@@ -203,15 +244,12 @@ def main_page():
             st.write(f"**Files in S3 for Task ID {selected_task_id}:**")
             for file_name in file_names:
                 st.write(f"- {file_name}")
-
-                # Display or provide preview for the file
                 display_file_from_s3(file_name)
         else:
-            # Flashing and centered message
             st.markdown(
                 """
                 <div style="text-align: center; animation: blinker 1.5s linear infinite; color: red; font-weight: bold;">
-                    ⚠️ No additional content found for this question ⚠️
+                    ⚠️ No additional context found for this question ⚠️
                 </div>
                 <style>
                 @keyframes blinker {
@@ -226,24 +264,9 @@ def main_page():
         st.session_state.associated_files = file_names
         st.session_state.selected_task_id = selected_task_id
 
-    # Add buttons for navigation
-    if st.button("Open AI Answer"):
-        st.session_state.page = 'new_page'
-        st.rerun()
-
-def new_page():
-    st.title("Open AI Answer and Comparison")
-    
-    if 'selected_question' in st.session_state:
-        st.write(f"**Selected Question:** {st.session_state.selected_question}")
-
-        if 'associated_files' in st.session_state and st.session_state.associated_files:
-            st.write("**Associated Files:**")
-            for file in st.session_state.associated_files:
-                st.write(f"- {file}")
-
-        if st.button("Generate Answer"):
-            # Prepare the prompt for OpenAI
+    # Generate Answer and Compare on Main Page
+    if st.button("Generate Answer"):
+        try:
             prompt = f"Question: {st.session_state.selected_question}\n"
             if 'associated_files' in st.session_state and st.session_state.associated_files:
                 prompt += "Associated files:\n"
@@ -251,56 +274,102 @@ def new_page():
                     prompt += f"- {file}\n"
             prompt += "\nPlease provide an answer to the question based on the available information."
 
-            # Call OpenAI API
+            response = openai.Completion.create(
+                engine="gpt-3.5-turbo-instruct",
+                prompt=prompt,
+                max_tokens=150
+            )
+            openai_answer = response.choices[0].text.strip()
+            st.session_state.openai_answer = openai_answer
+
+            # Fetch database answer and compare
+            database_result = get_database_answer(st.session_state.selected_task_id)
+            if database_result:
+                database_answer = database_result[0]
+                st.session_state.database_answer = database_answer
+
+                is_correct = compare_answers(openai_answer, database_answer)
+                st.session_state.is_correct = is_correct
+
+            st.session_state.page = 'compare_page'
+            st.rerun()
+        except Exception as e:
+            st.error(f"An error occurred while generating the answer: {str(e)}")
+
+def compare_page():
+    st.title("Open AI Answer and Comparison")
+    
+    if 'selected_question' in st.session_state:
+        st.write(f"**Selected Question:** {st.session_state.selected_question}")
+        st.write(f"**OpenAI Answer:** {st.session_state.openai_answer}")
+        st.write(f"**Database Answer:** {st.session_state.database_answer}")
+
+        if st.session_state.is_correct:
+            st.success("The OpenAI answer matches the database answer.")
+        else:
+            st.error("The OpenAI answer does not match the database answer.")
+
+    # Navigation buttons
+    if st.button("Go Back"):
+        st.session_state.page = 'main'
+        st.rerun()
+
+    if st.button("Regenerate Answer"):
+        st.session_state.page = 'regenerate_page'
+        st.rerun()
+
+def regenerate_answer_page():
+    st.title("Regenerated Answer")
+
+    if 'selected_question' in st.session_state:
+        st.write(f"**Selected Question:** {st.session_state.selected_question}")
+
+        # Prepare the regeneration prompt with annotator steps and files
+        annotator_steps_result = get_annotator_steps(st.session_state.selected_task_id)
+        if annotator_steps_result:
+            annotator_steps = annotator_steps_result[0]
+            prompt = f"Question: {st.session_state.selected_question}\n"
+            prompt += f"Annotator Steps: {annotator_steps}\n"
+            if 'associated_files' in st.session_state and st.session_state.associated_files:
+                prompt += "Associated files:\n"
+                for file in st.session_state.associated_files:
+                    prompt += f"- {file}\n"
+            prompt += "\nPlease regenerate the answer based on the provided steps and files."
+
+            # Call OpenAI API for regenerated answer
             try:
                 response = openai.Completion.create(
                     engine="gpt-3.5-turbo-instruct",
                     prompt=prompt,
-                    max_tokens=150
+                    max_tokens=200
                 ) 
-                openai_answer = response.choices[0].text.strip()
-                st.write("**OpenAI Answer:**")
-                st.write(openai_answer)
+                regenerated_answer = response.choices[0].text.strip()
+                st.write("**Regenerated OpenAI Answer:**")
+                st.write(regenerated_answer)
 
-                # Fetch database answer and annotator steps
-                database_result = get_database_answer(st.session_state.selected_task_id)
-                if database_result:
-                    database_answer, annotator_steps = database_result
-                    st.write("**Database Answer:**")
-                    st.write(database_answer)
+                # Display annotator steps and object name from S3
+                st.write(f"**Annotator Steps:** {annotator_steps}")
+                if 'associated_files' in st.session_state:
+                    st.write(f"**Object from S3 used:** {st.session_state.associated_files}")
 
-                    # Compare answers
-                    is_correct = compare_answers(openai_answer, database_answer)
+                # Compare regenerated answer with the database answer
+                if 'database_answer' in st.session_state:
+                    is_correct = compare_answers(regenerated_answer, st.session_state.database_answer)
                     if is_correct:
-                        st.success("The OpenAI answer matches the database answer.")
+                        st.success("The regenerated answer matches the database answer.")
                     else:
-                        st.error("The OpenAI answer does not match the database answer.")
-                        st.write("**Annotator Steps:**")
-                        st.write(annotator_steps)
-
-                    # Provide feedback to OpenAI
-                        feedback_prompt = f"The correct answer is: {database_answer}\n"
-                        feedback_prompt += f"Annotator steps: {annotator_steps}\n"
-                        feedback_prompt += "Please provide an improved answer based on this feedback."
-
-                        improved_response = openai.Completion.create(
-                            engine="gpt-3.5-turbo-instruct",
-                            prompt=feedback_prompt,
-                            max_tokens=200
-                        )
-                        improved_answer = improved_response.choices[0].text.strip()
-                        st.write("**Improved OpenAI Answer:**")
-                        st.write(improved_answer)
-                else:
-                    st.warning("No database answer found for this question.")
-
+                        st.error("The regenerated answer does not match the database answer.")
             except Exception as e:
-                st.error(f"An error occurred while generating the answer: {str(e)}")
-    else:
-        st.write("No question selected. Please go back and select a question.")
+                st.error(f"An error occurred while regenerating the answer: {str(e)}")
+        else:
+            st.warning("No annotator steps found for this question.")
 
-    # Button to go back to main page
+    # Add navigation buttons
     if st.button("Go Back"):
+        st.session_state.page = 'compare_page'
+        st.rerun()
+
+    if st.button("Go Home"):
         st.session_state.page = 'main'
         st.rerun()
 
