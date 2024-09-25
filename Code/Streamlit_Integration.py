@@ -22,7 +22,7 @@ def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='Siddhivinayak@8',
+        password='admin0077',
         database='GAIA',
     )
     return connection
@@ -116,10 +116,10 @@ def get_annotator_steps(task_id):
     connection.close()
     return result
 
-def reset_attempts():
+def reset_attempts_and_validation():
     connection = connect_mysql()
     cursor = connection.cursor()
-    query = "UPDATE METADATA SET Number_of_Attempts = 0"
+    query = "UPDATE METADATA SET Number_of_Attempts = 0, Validated = 'No'"
     cursor.execute(query)
     connection.commit()
     cursor.close()
@@ -147,14 +147,19 @@ def cosine_similarity_embeddings(openai_answer, database_answer):
     
     return similarity_score
 
-def update_attempts_and_validation(task_id, validated):
+def update_attempts(task_id):
     connection = connect_mysql()
     cursor = connection.cursor()
-    query = """
-    UPDATE METADATA 
-    SET Number_of_Attempts = Number_of_Attempts + 1, Validated = %s 
-    WHERE task_id = %s
-    """
+    query = "UPDATE METADATA SET Number_of_Attempts = Number_of_Attempts + 1 WHERE task_id = %s"
+    cursor.execute(query, (task_id,))
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+def update_validation(task_id, validated):
+    connection = connect_mysql()
+    cursor = connection.cursor()
+    query = "UPDATE METADATA SET Validated = %s WHERE task_id = %s"
     cursor.execute(query, (validated, task_id))
     connection.commit()
     cursor.close()
@@ -165,27 +170,29 @@ def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
     database_answer_cleaned = clean_text(database_answer)
     if len(database_answer_cleaned.split()) == 1:
         if database_answer_cleaned in clean_text(openai_answer):
-            update_attempts_and_validation(task_id, 'Yes')
+            update_validation(task_id, 'Yes')
             st.write("Exact match found for single-word database answer.")
             return True
     
     # Fall back to cosine similarity if no direct match was found
     similarity = cosine_similarity_embeddings(openai_answer, database_answer)
     if similarity >= threshold:
-        update_attempts_and_validation(task_id, 'Yes')
+        update_validation(task_id, 'Yes')
         return True
     
     # If no match
-    update_attempts_and_validation(task_id, 'No')
+    update_validation(task_id, 'No')
     return False
 
 # Streamlit main page
 def main():
-    st.set_page_config(page_title="Task Viewer and OpenAI Answer", layout="wide")
+    st.set_page_config(page_title="Task Genie: AI-Powered Answers", layout="wide")
 
-    # Reset the Number_of_Attempts to 0 when the app starts
-    reset_attempts()  # Reset attempts each time the app restarts
-    
+    # Reset the Number_of_Attempts and validation on app close or refresh
+    if 'first_run' not in st.session_state:
+        reset_attempts_and_validation()  
+        st.session_state.first_run = True  # Only reset once during the app session
+
     # Initialize session state
     if 'page' not in st.session_state:
         st.session_state.page = 'main'
@@ -297,6 +304,7 @@ def main_page():
     # Generate Answer and Compare on Main Page
     if st.button("Generate Answer"):
         try:
+            update_attempts(st.session_state.selected_task_id)
             prompt = f"Question: {st.session_state.selected_question}\n"
             if 'associated_files' in st.session_state and st.session_state.associated_files:
                 prompt += "Associated files:\n"
@@ -345,6 +353,7 @@ def compare_page():
         st.rerun()
 
     if st.button("Regenerate Answer"):
+        update_attempts(st.session_state.selected_task_id)  # Increment count here
         st.session_state.page = 'regenerate_page'
         st.rerun()
 
@@ -408,6 +417,8 @@ def regenerate_answer_page():
         else:
             # The regenerate answer button will keep showing until the correct match is found
             if st.button("Regenerate Answer", key="regenerate_button"):
+                update_attempts(st.session_state.selected_task_id)  # Increment count here as well
+                
                 try:
                     # Regenerate the answer
                     response = openai.Completion.create(
@@ -435,7 +446,6 @@ def regenerate_answer_page():
             if st.button("Go Home", key="go_home_button_alt"):
                 st.session_state.page = 'main'
                 st.rerun()
-
 
 if __name__ == "__main__":
     main()
