@@ -11,6 +11,8 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 import re
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Load pre-trained model for sentence embeddings
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
@@ -22,7 +24,7 @@ def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='admin0077',
+        password='Siddhivinayak@8',
         database='GAIA',
     )
     return connection
@@ -165,6 +167,16 @@ def update_validation(task_id, validated):
     cursor.close()
     connection.close()
 
+def get_visualization_data():
+    connection = connect_mysql()
+    cursor = connection.cursor()
+    query = "SELECT task_id, Number_of_Attempts, Validated FROM METADATA"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    cursor.close()
+    connection.close()
+    return result
+
 def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
     # Check if database answer is a single word and if it appears in the generated answer
     database_answer_cleaned = clean_text(database_answer)
@@ -184,6 +196,59 @@ def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
     update_validation(task_id, 'No')
     return False
 
+def decreasing_bar_chart(data):
+    df = pd.DataFrame(data, columns=['task_id', 'Number_of_Attempts', 'Validated'])
+    df = df.sort_values('Number_of_Attempts', ascending=False)
+    
+    plt.figure(figsize=(10, 5))
+    sns.barplot(x='task_id', y='Number_of_Attempts', data=df)
+    plt.title('Number of Attempts per Task ID')
+    plt.xlabel('Task ID')
+    plt.ylabel('Number of Attempts')
+    plt.xticks(rotation=90)
+    st.pyplot(plt)
+
+def correct_responses_chart(data):
+    df = pd.DataFrame(data, columns=['task_id', 'Number_of_Attempts', 'Validated'])
+    first_attempt = df[(df['Number_of_Attempts'] == 1) & (df['Validated'] == 'Yes')].shape[0]
+    regenerated_attempts = df[(df['Number_of_Attempts'] > 1) & (df['Validated'] == 'Yes')].shape[0]
+    
+    plt.figure(figsize=(6, 4))
+    plt.bar(['First Attempt', 'Regenerated Attempts'], [first_attempt, regenerated_attempts])
+    plt.title('Correct Responses: First Attempt vs Regenerated Attempts')
+    plt.ylabel('Count')
+    for i, v in enumerate([first_attempt, regenerated_attempts]):
+        plt.text(i, v, str(v), ha='center', va='bottom')
+    st.pyplot(plt)
+
+def validation_status_chart(data):
+    df = pd.DataFrame(data, columns=['task_id', 'Number_of_Attempts', 'Validated'])
+    validated_count = df[df['Validated'] == 'Yes'].shape[0]
+    not_validated_count = df[df['Validated'] == 'No'].shape[0]
+    
+    plt.figure(figsize=(6, 6))
+    plt.pie([validated_count, not_validated_count], labels=['Validated', 'Not Validated'], autopct='%1.1f%%')
+    plt.title('Validation Status of Task IDs')
+    st.pyplot(plt)
+
+def visualizations_page():
+    st.title("Visualizations")
+    
+    data = get_visualization_data()
+    
+    st.subheader("1. Number of Attempts per Task ID")
+    decreasing_bar_chart(data)
+    
+    st.subheader("2. Correct Responses: First Attempt vs Regenerated Attempts")
+    correct_responses_chart(data)
+    
+    st.subheader("3. Validation Status of Task IDs")
+    validation_status_chart(data)
+    
+    if st.button("Back to Home Page"):
+        st.session_state.page = 'main'
+        st.rerun()
+        
 # Streamlit main page
 def main():
     st.set_page_config(page_title="Task Genie: AI-Powered Answers", layout="wide")
@@ -202,6 +267,8 @@ def main():
         compare_page()
     elif st.session_state.page == 'regenerate_page':
         regenerate_answer_page()
+    elif st.session_state.page == 'visualizations':
+        visualizations_page()
 
 def main_page():
     # Custom CSS for black background and white text
@@ -301,6 +368,11 @@ def main_page():
         st.session_state.associated_files = file_names
         st.session_state.selected_task_id = selected_task_id
 
+    # Add the Visualizations button
+    if st.button("Visualizations"):
+        st.session_state.page = 'visualizations'
+        st.rerun()
+
     # Generate Answer and Compare on Main Page
     if st.button("Generate Answer"):
         try:
@@ -319,6 +391,7 @@ def main_page():
             )
             openai_answer = response.choices[0].text.strip()
             st.session_state.openai_answer = openai_answer
+            
 
             # Fetch database answer and compare
             database_result = get_database_answer(st.session_state.selected_task_id)
