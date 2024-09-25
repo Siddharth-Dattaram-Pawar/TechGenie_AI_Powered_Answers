@@ -351,10 +351,11 @@ def compare_page():
 def regenerate_answer_page():
     st.title("Regenerated Answer")
 
+    # Ensure the question is available in session state
     if 'selected_question' in st.session_state:
         st.write(f"**Selected Question:** {st.session_state.selected_question}")
 
-        # Prepare the regeneration prompt with annotator steps and files
+        # Prepare the prompt for OpenAI using the question, annotator steps, and associated files
         annotator_steps_result = get_annotator_steps(st.session_state.selected_task_id)
         if annotator_steps_result:
             annotator_steps = annotator_steps_result[0]
@@ -364,44 +365,77 @@ def regenerate_answer_page():
                 prompt += "Associated files:\n"
                 for file in st.session_state.associated_files:
                     prompt += f"- {file}\n"
-            prompt += "\nPlease regenerate the answer based on the provided steps and files."
+            prompt += "\nPlease generate an answer based on the provided steps and files."
 
-            # Call OpenAI API for regenerated answer
+            # Automatically generate the OpenAI answer and display it directly
             try:
                 response = openai.Completion.create(
                     engine="gpt-3.5-turbo-instruct",
                     prompt=prompt,
                     max_tokens=200
-                ) 
-                regenerated_answer = response.choices[0].text.strip()
-                st.write("**Regenerated OpenAI Answer:**")
-                st.write(regenerated_answer)
+                )
+                openai_answer = response.choices[0].text.strip()
+                st.session_state.openai_answer = openai_answer
+                st.write(f"**Task ID:** {st.session_state.selected_task_id}")
 
-                # Display annotator steps and object name from S3
+                # Display task details, annotator steps, and files
                 st.write(f"**Annotator Steps:** {annotator_steps}")
                 if 'associated_files' in st.session_state:
-                    st.write(f"**Object from S3 used:** {st.session_state.associated_files}")
-
-                # Compare regenerated answer with the database answer
+                    st.write(f"**Associated Files:** {st.session_state.associated_files}")
+                st.write("**OpenAI Generated Answer:**")
+                st.write(openai_answer)
+                
+                # Compare the OpenAI answer with the database answer
                 if 'database_answer' in st.session_state:
-                    is_correct = compare_answers(regenerated_answer, st.session_state.database_answer,st.session_state.selected_task_id)
+                    is_correct = compare_answers(openai_answer, st.session_state.database_answer, st.session_state.selected_task_id)
+                    st.session_state.is_correct = is_correct
+
                     if is_correct:
-                        st.success("The regenerated answer matches the database answer.")
+                        st.success("The generated OpenAI answer matches the database answer.")
                     else:
-                        st.error("The regenerated answer does not match the database answer.")
+                        st.error("The generated OpenAI answer does not match the database answer.")
             except Exception as e:
-                st.error(f"An error occurred while regenerating the answer: {str(e)}")
+                st.error(f"An error occurred while generating the answer: {str(e)}")
+
         else:
             st.warning("No annotator steps found for this question.")
 
-    # Add navigation buttons
-    if st.button("Go Back"):
-        st.session_state.page = 'compare_page'
-        st.rerun()
+        # Display buttons based on whether the answer matches the database answer
+        if 'is_correct' in st.session_state and st.session_state.is_correct:
+            if st.button("Go Home", key="go_home_button"):
+                st.session_state.page = 'main'
+                st.rerun()
+        else:
+            # The regenerate answer button will keep showing until the correct match is found
+            if st.button("Regenerate Answer", key="regenerate_button"):
+                try:
+                    # Regenerate the answer
+                    response = openai.Completion.create(
+                        engine="gpt-3.5-turbo-instruct",
+                        prompt=prompt,
+                        max_tokens=200
+                    )
+                    regenerated_answer = response.choices[0].text.strip()
+                    st.session_state.openai_answer = regenerated_answer
+                    st.write("**Regenerated OpenAI Answer:**")
+                    st.write(regenerated_answer)
 
-    if st.button("Go Home"):
-        st.session_state.page = 'main'
-        st.rerun()
+                    # Compare regenerated answer with database answer
+                    if 'database_answer' in st.session_state:
+                        is_correct = compare_answers(regenerated_answer, st.session_state.database_answer, st.session_state.selected_task_id)
+                        st.session_state.is_correct = is_correct
+
+                        if is_correct:
+                            st.success("The regenerated OpenAI answer matches the database answer.")
+                        else:
+                            st.error("The regenerated OpenAI answer does not match the database answer.")
+                except Exception as e:
+                    st.error(f"An error occurred while regenerating the answer: {str(e)}")
+
+            if st.button("Go Home", key="go_home_button_alt"):
+                st.session_state.page = 'main'
+                st.rerun()
+
 
 if __name__ == "__main__":
     main()
