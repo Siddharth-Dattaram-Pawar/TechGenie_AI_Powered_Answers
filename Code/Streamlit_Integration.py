@@ -170,12 +170,15 @@ def update_validation(task_id, validated):
 def get_visualization_data():
     connection = connect_mysql()
     cursor = connection.cursor()
-    query = "SELECT task_id, Number_of_Attempts, Validated FROM METADATA"
+    query = "SELECT task_no, Number_of_Attempts, Validated FROM METADATA ORDER BY task_no"
     cursor.execute(query)
     result = cursor.fetchall()
     cursor.close()
     connection.close()
-    return result
+    
+    # Create a DataFrame
+    df = pd.DataFrame(result, columns=['Task_No', 'Number_of_Attempts', 'Validated'])
+    return df
 
 def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
     # Check if database answer is a single word and if it appears in the generated answer
@@ -197,15 +200,21 @@ def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
     return False
 
 def decreasing_bar_chart(data):
-    df = pd.DataFrame(data, columns=['task_id', 'Number_of_Attempts', 'Validated'])
-    df = df.sort_values('Number_of_Attempts', ascending=False)
+    df = data.sort_values('Number_of_Attempts', ascending=True)
     
-    plt.figure(figsize=(10, 5))
-    sns.barplot(x='task_id', y='Number_of_Attempts', data=df)
-    plt.title('Number of Attempts per Task ID')
-    plt.xlabel('Task ID')
-    plt.ylabel('Number of Attempts')
-    plt.xticks(rotation=90)
+    plt.figure(figsize=(10, max(8, len(df) * 0.3)))  # Adjust figure height based on number of tasks
+    bars = plt.barh(df['Task_No'], df['Number_of_Attempts'])
+    plt.title('Number of Attempts per Task')
+    plt.xlabel('Number of Attempts')
+    plt.ylabel('Task Number')
+    plt.yticks(df['Task_No'])
+    
+    # Add value labels to the end of each bar
+    for bar in bars:
+        width = bar.get_width()
+        plt.text(width, bar.get_y() + bar.get_height()/2, f'{width}', 
+                 ha='left', va='center', fontweight='bold')
+    
     st.pyplot(plt)
 
 def correct_responses_chart(data):
@@ -236,7 +245,7 @@ def visualizations_page():
     
     data = get_visualization_data()
     
-    st.subheader("1. Number of Attempts per Task ID")
+    st.subheader("1. Number of Attempts per Task")
     decreasing_bar_chart(data)
     
     st.subheader("2. Correct Responses: First Attempt vs Regenerated Attempts")
@@ -321,7 +330,7 @@ def main_page():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("Task Viewer")
+    st.title("Task Genie : AI Powered Answers")
 
     # Fetch questions from MySQL
     question_data = get_questions()
@@ -368,13 +377,8 @@ def main_page():
         st.session_state.associated_files = file_names
         st.session_state.selected_task_id = selected_task_id
 
-    # Add the Visualizations button
-    if st.button("Visualizations"):
-        st.session_state.page = 'visualizations'
-        st.rerun()
-
     # Generate Answer and Compare on Main Page
-    if st.button("Generate Answer"):
+    if st.button("Generate Response"):
         try:
             update_attempts(st.session_state.selected_task_id)
             prompt = f"Question: {st.session_state.selected_question}\n"
@@ -407,8 +411,13 @@ def main_page():
         except Exception as e:
             st.error(f"An error occurred while generating the answer: {str(e)}")
 
+    # Add the Visualizations button
+    if st.button("Visualizations"):
+        st.session_state.page = 'visualizations'
+        st.rerun()
+
 def compare_page():
-    st.title("Open AI Answer and Comparison")
+    st.title("Open AI Response Comparison")
     
     if 'selected_question' in st.session_state:
         st.write(f"**Selected Question:** {st.session_state.selected_question}")
@@ -420,18 +429,20 @@ def compare_page():
         else:
             st.error("The OpenAI answer does not match the database answer.")
 
+    if st.button("Regenerate Response"):
+        update_attempts(st.session_state.selected_task_id)  # Increment count here
+        st.session_state.page = 'regenerate_page'
+        st.rerun()
+    
     # Navigation buttons
     if st.button("Go Back"):
         st.session_state.page = 'main'
         st.rerun()
 
-    if st.button("Regenerate Answer"):
-        update_attempts(st.session_state.selected_task_id)  # Increment count here
-        st.session_state.page = 'regenerate_page'
-        st.rerun()
+    
 
 def regenerate_answer_page():
-    st.title("Regenerated Answer")
+    st.title("Regenerated Response")
 
     # Ensure the question is available in session state
     if 'selected_question' in st.session_state:
