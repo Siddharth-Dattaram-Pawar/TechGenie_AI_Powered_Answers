@@ -24,7 +24,7 @@ def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='Siddhivinayak@8',
+        password='admin0077',
         database='GAIA',
     )
     return connection
@@ -181,16 +181,18 @@ def get_visualization_data():
     return df
 
 def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
-    # Check if database answer is a single word and if it appears in the generated answer
-    database_answer_cleaned = clean_text(database_answer)
-    if len(database_answer_cleaned.split()) == 1:
-        if database_answer_cleaned in clean_text(openai_answer):
-            update_validation(task_id, 'Yes')
-            st.write("Exact match found for single-word database answer.")
-            return True
-    
+    # Clean both answers
+    openai_cleaned = clean_text(openai_answer)
+    database_cleaned = clean_text(database_answer)
+
+    # Check if database answer (whether single-word or phrase) is a substring of OpenAI answer
+    if database_cleaned in openai_cleaned:
+        update_validation(task_id, 'Yes')
+        st.write("Exact match found in OpenAI answer.")
+        return True
+
     # Fall back to cosine similarity if no direct match was found
-    similarity = cosine_similarity_embeddings(openai_answer, database_answer)
+    similarity = cosine_similarity_embeddings(openai_cleaned, database_cleaned)
     if similarity >= threshold:
         update_validation(task_id, 'Yes')
         return True
