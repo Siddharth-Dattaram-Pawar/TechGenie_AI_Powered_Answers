@@ -24,7 +24,7 @@ def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='admin0077',
+        password='Siddhivinayak@8',
         database='GAIA',
     )
     return connection
@@ -170,14 +170,13 @@ def update_validation(task_id, validated):
 def get_visualization_data():
     connection = connect_mysql()
     cursor = connection.cursor()
-    query = "SELECT task_no, Number_of_Attempts, Validated FROM METADATA ORDER BY task_no"
+    query = "SELECT task_id, task_no, Number_of_Attempts, Validated FROM METADATA ORDER BY task_no"
     cursor.execute(query)
     result = cursor.fetchall()
     cursor.close()
     connection.close()
     
-    # Create a DataFrame
-    df = pd.DataFrame(result, columns=['Task_No', 'Number_of_Attempts', 'Validated'])
+    df = pd.DataFrame(result, columns=['task_id', 'Task_No', 'Number_of_Attempts', 'Validated'])
     return df
 
 def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
@@ -201,61 +200,173 @@ def compare_answers(openai_answer, database_answer, task_id, threshold=0.8):
     update_validation(task_id, 'No')
     return False
 
-def decreasing_bar_chart(data):
-    df = data.sort_values('Number_of_Attempts', ascending=True)
-    
-    plt.figure(figsize=(10, max(8, len(df) * 0.3)))  # Adjust figure height based on number of tasks
-    bars = plt.barh(df['Task_No'], df['Number_of_Attempts'])
-    plt.title('Number of Attempts per Task')
-    plt.xlabel('Number of Attempts')
-    plt.ylabel('Task Number')
-    plt.yticks(df['Task_No'])
-    
-    # Add value labels to the end of each bar
+def attempts_count_chart(data):
+    attempts_count = data['Number_of_Attempts'].value_counts().sort_index()
+    plt.figure(figsize=(12, 8))
+    bars = plt.bar(attempts_count.index, attempts_count.values, color='#1f77b4')
+    plt.title('Number of Attempts vs Count of Task IDs', fontsize=16)
+    plt.xlabel('Number of Attempts', fontsize=12)
+    plt.ylabel('Count of Task IDs', fontsize=12)
+    plt.tick_params(axis='both', which='major', labelsize=10)
     for bar in bars:
-        width = bar.get_width()
-        plt.text(width, bar.get_y() + bar.get_height()/2, f'{width}', 
-                 ha='left', va='center', fontweight='bold')
-    
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, height, f'{height}', 
+                 ha='center', va='bottom', fontweight='bold', fontsize=10)
+    plt.tight_layout()
     st.pyplot(plt)
 
 def correct_responses_chart(data):
-    df = pd.DataFrame(data, columns=['task_id', 'Number_of_Attempts', 'Validated'])
-    first_attempt = df[(df['Number_of_Attempts'] == 1) & (df['Validated'] == 'Yes')].shape[0]
-    regenerated_attempts = df[(df['Number_of_Attempts'] > 1) & (df['Validated'] == 'Yes')].shape[0]
-    
-    plt.figure(figsize=(6, 4))
-    plt.bar(['First Attempt', 'Regenerated Attempts'], [first_attempt, regenerated_attempts])
-    plt.title('Correct Responses: First Attempt vs Regenerated Attempts')
-    plt.ylabel('Count')
-    for i, v in enumerate([first_attempt, regenerated_attempts]):
-        plt.text(i, v, str(v), ha='center', va='bottom')
+    first_attempt = data[(data['Number_of_Attempts'] == 1) & (data['Validated'] == 'Yes')].shape[0]
+    regenerated_attempts = data[(data['Number_of_Attempts'] > 1) & (data['Validated'] == 'Yes')].shape[0]
+    plt.figure(figsize=(10, 6))
+    bars = plt.bar(['First Attempt', 'Regenerated Attempts'], [first_attempt, regenerated_attempts], color=['#3C99DC', '#0F5298'])
+    plt.title('Correct Responses: First Attempt vs Regenerated Attempts', fontsize=16)
+    plt.ylabel('Count', fontsize=12)
+    plt.tick_params(axis='both', which='major', labelsize=10)
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, height, f'{height}', 
+                 ha='center', va='bottom', fontsize=10)
+    plt.tight_layout()
     st.pyplot(plt)
 
 def validation_status_chart(data):
-    df = pd.DataFrame(data, columns=['task_id', 'Number_of_Attempts', 'Validated'])
-    validated_count = df[df['Validated'] == 'Yes'].shape[0]
-    not_validated_count = df[df['Validated'] == 'No'].shape[0]
+    validated_count = data[data['Validated'] == 'Yes'].shape[0]
+    not_validated_count = data[data['Validated'] == 'No'].shape[0]
     
-    plt.figure(figsize=(6, 6))
-    plt.pie([validated_count, not_validated_count], labels=['Validated', 'Not Validated'], autopct='%1.1f%%')
-    plt.title('Validation Status of Task IDs')
+    # Handle potential NaN values
+    total_count = validated_count + not_validated_count
+    if total_count == 0:
+        st.write("No data available for validation status chart.")
+        return
+
+    plt.figure(figsize=(10, 10))
+    colors = ['#3C99DC', '#0F5298']
+    plt.pie([validated_count, not_validated_count], 
+            labels=['Validated', 'Not Validated'], 
+            autopct=lambda pct: f'{pct:.1f}%\n({int(pct/100.*total_count):d})',
+            colors=colors, 
+            textprops={'fontsize': 12})
+    plt.title('Validation Status of Task IDs', fontsize=16)
+    plt.tight_layout()
     st.pyplot(plt)
 
 def visualizations_page():
+
+    # Custom CSS for black background and white text
+    st.markdown("""
+        <style>
+        body {
+            background-color: #121212;
+            color: white;
+        }
+        .stSelectbox label {
+            font-size: 2.2em !important;
+            color: white !important;
+        }
+        .stTextInput>div>div>input, .stSelectbox>div>div>div>input {
+            color: black;
+        }
+        h1 {
+            font-family: "Amasis MT Pro", Arial, sans-serif;
+            text-align: center;
+            font-size: 3.5em;
+            color: #FFD700;
+            padding-top: 1em;
+            padding-bottom: 0.5em;
+        }
+        .stSelectbox, .stDataFrame {
+            background-color: #222222;
+            border-radius: 10px;
+        }
+        .stMarkdown {
+            color: white;
+        }
+        .stButton button {
+            background-color: #FFD700;
+            color: black;
+        }
+        .block-container {
+            padding-top: 3rem;
+            padding-bottom: 3rem;
+        }
+        .main, .block-container {
+            background-color: #121212;  /* This ensures the whole background is black */
+        }
+        .stMarkdown h2 {
+            color: #FFD700;
+        }
+        
+        label {
+            font-size: 1.25em; /* Adjust the font size (4 points larger) */
+            color: white;      /* White color for the label */
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     st.title("Visualizations")
-    
     data = get_visualization_data()
-    
-    st.subheader("1. Number of Attempts per Task")
-    decreasing_bar_chart(data)
-    
+
+    st.sidebar.title("Filter")
+    all_tasks = data['Task_No'].unique().tolist()
+
+    # Add "Select All" option
+    select_all = st.sidebar.checkbox("Select All")
+
+    if not select_all:
+        # Text input for task numbers
+        task_input = st.sidebar.text_input("Enter Task Numbers (comma-separated)", 
+                                           placeholder="e.g., 1,2,3-5,7")
+        
+        if task_input:
+            # Parse the input
+            selected_tasks = []
+            for part in task_input.split(','):
+                if '-' in part:
+                    start, end = map(int, part.split('-'))
+                    selected_tasks.extend(range(start, end + 1))
+                else:
+                    selected_tasks.append(int(part.strip()))
+            
+            selected_tasks = [task for task in selected_tasks if task in all_tasks]
+        else:
+            selected_tasks = []
+    else:
+        selected_tasks = all_tasks
+
+    # Filter data based on selection
+    filtered_data = data[data['Task_No'].isin(selected_tasks)]
+
+    # Display selected task IDs
+    if not select_all:
+        st.sidebar.write("Selected Task IDs:")
+        for task in selected_tasks:
+            task_id = data[data['Task_No'] == task]['task_id'].iloc[0]
+            st.sidebar.write(f"Task {task} (ID: {task_id})")
+
+    # Center content with margins
+    st.markdown("""
+        <style>
+            .reportview-container .main .block-container {
+                max-width: 1000px;
+                padding-top: 5rem;
+                padding-right: 5rem;
+                padding-left: 5rem;
+                padding-bottom: 5rem;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Visualizations
+    st.subheader("1. Number of Attempts vs Count of Task IDs")
+    attempts_count_chart(filtered_data)
+
     st.subheader("2. Correct Responses: First Attempt vs Regenerated Attempts")
-    correct_responses_chart(data)
-    
+    correct_responses_chart(filtered_data)
+
     st.subheader("3. Validation Status of Task IDs")
-    validation_status_chart(data)
-    
+    validation_status_chart(filtered_data)
+
     if st.button("Back to Home Page"):
         st.session_state.page = 'main'
         st.rerun()
@@ -263,7 +374,16 @@ def visualizations_page():
 # Streamlit main page
 def main():
     st.set_page_config(page_title="Task Genie: AI-Powered Answers", layout="wide")
-
+    
+    st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amasis+MT+Pro&display=swap');
+        html, body, [class*="css"] {
+            font-family: 'Amasis MT Pro', serif;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    
     # Reset the Number_of_Attempts and validation on app close or refresh
     if 'first_run' not in st.session_state:
         reset_attempts_and_validation()  
@@ -297,6 +417,7 @@ def main_page():
             color: black;
         }
         h1 {
+            font-family: "Amasis MT Pro", Arial, sans-serif;
             text-align: center;
             font-size: 3.5em;
             color: #FFD700;
@@ -419,6 +540,57 @@ def main_page():
         st.rerun()
 
 def compare_page():
+
+    st.markdown("""
+        <style>
+        body {
+            background-color: #121212;
+            color: white;
+        }
+        .stSelectbox label {
+            font-size: 2.2em !important;
+            color: white !important;
+        }
+        .stTextInput>div>div>input, .stSelectbox>div>div>div>input {
+            color: black;
+        }
+        h1 {
+            font-family: "Amasis MT Pro", Arial, sans-serif;
+            text-align: center;
+            font-size: 3.5em;
+            color: #FFD700;
+            padding-top: 1em;
+            padding-bottom: 0.5em;
+        }
+        .stSelectbox, .stDataFrame {
+            background-color: #222222;
+            border-radius: 10px;
+        }
+        .stMarkdown {
+            color: white;
+        }
+        .stButton button {
+            background-color: #FFD700;
+            color: black;
+        }
+        .block-container {
+            padding-top: 3rem;
+            padding-bottom: 3rem;
+        }
+        .main, .block-container {
+            background-color: #121212;  /* This ensures the whole background is black */
+        }
+        .stMarkdown h2 {
+            color: #FFD700;
+        }
+        
+        label {
+            font-size: 1.25em; /* Adjust the font size (4 points larger) */
+            color: white;      /* White color for the label */
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.title("Open AI Response Comparison")
     
     if 'selected_question' in st.session_state:
@@ -427,9 +599,33 @@ def compare_page():
         st.write(f"**Database Answer:** {st.session_state.database_answer}")
 
         if st.session_state.is_correct:
-            st.success("The OpenAI answer matches the database answer.")
+            st.markdown(
+                """
+                <div style="text-align: center; animation: blinker 1.5s linear infinite; color: Green; font-weight: bold;">
+                    ⚠️ Open AI response matches the database answer ⚠️
+                </div>
+                <style>
+                @keyframes blinker {
+                    50% { opacity: 0; }
+                }
+                </style>
+                """, 
+                unsafe_allow_html=True
+            )
         else:
-            st.error("The OpenAI answer does not match the database answer.")
+            st.markdown(
+                """
+                <div style="text-align: center; animation: blinker 1.5s linear infinite; color: red; font-weight: bold;">
+                    ⚠️ Open AI response doesn`t match the database answer ⚠️
+                </div>
+                <style>
+                @keyframes blinker {
+                    50% { opacity: 0; }
+                }
+                </style>
+                """, 
+                unsafe_allow_html=True
+            )
 
     if st.button("Regenerate Response"):
         update_attempts(st.session_state.selected_task_id)  # Increment count here
@@ -444,6 +640,57 @@ def compare_page():
     
 
 def regenerate_answer_page():
+
+    st.markdown("""
+        <style>
+        body {
+            background-color: #121212;
+            color: white;
+        }
+        .stSelectbox label {
+            font-size: 2.2em !important;
+            color: white !important;
+        }
+        .stTextInput>div>div>input, .stSelectbox>div>div>div>input {
+            color: black;
+        }
+        h1 {
+            font-family: "Amasis MT Pro", Arial, sans-serif;
+            text-align: center;
+            font-size: 3.5em;
+            color: #FFD700;
+            padding-top: 1em;
+            padding-bottom: 0.5em;
+        }
+        .stSelectbox, .stDataFrame {
+            background-color: #222222;
+            border-radius: 10px;
+        }
+        .stMarkdown {
+            color: white;
+        }
+        .stButton button {
+            background-color: #FFD700;
+            color: black;
+        }
+        .block-container {
+            padding-top: 3rem;
+            padding-bottom: 3rem;
+        }
+        .main, .block-container {
+            background-color: #121212;  /* This ensures the whole background is black */
+        }
+        .stMarkdown h2 {
+            color: #FFD700;
+        }
+        
+        label {
+            font-size: 1.25em; /* Adjust the font size (4 points larger) */
+            color: white;      /* White color for the label */
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.title("Regenerated Response")
 
     # Ensure the question is available in session state
