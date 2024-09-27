@@ -2,6 +2,8 @@
 
 This project involves developing a Streamlit application for model evaluation teams to select and evaluate test cases from the GAIA dataset against the OpenAI model. The application allows users to send context data and questions to the OpenAI model and compare the model's answers with the final answers from the metadata file.
 
+Codelab link - [link](https://codelabs-preview.appspot.com/?file_id=11Bv8yal4awS5ywv5cM-QZX0SG4z43PxAG1WWGQWo7o0#0)
+
 ### Attestation
 
 WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS’ WORK IN OUR ASSIGNMENT AND ABIDE BY THE POLICIES LISTED IN THE STUDENT HANDBOOK.
