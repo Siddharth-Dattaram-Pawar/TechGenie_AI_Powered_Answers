@@ -2,6 +2,15 @@
 
 This project involves developing a Streamlit application for model evaluation teams to select and evaluate test cases from the GAIA dataset against the OpenAI model. The application allows users to send context data and questions to the OpenAI model and compare the model's answers with the final answers from the metadata file.
 
+### Attestation
+
+WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS’ WORK IN OUR ASSIGNMENT AND ABIDE BY THE POLICIES LISTED IN THE STUDENT HANDBOOK.
+
+**Contribution:**
+- Vaishanvi Veerkumar: 34%
+- Sriram Venkatesh: 33%
+- Siddharth Pawar: 33%
+
 ## Table of Contents
 
 - [Project Overview](#project-overview)
