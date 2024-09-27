@@ -7,7 +7,7 @@ This project involves developing a Streamlit application for model evaluation te
 WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS’ WORK IN OUR ASSIGNMENT AND ABIDE BY THE POLICIES LISTED IN THE STUDENT HANDBOOK.
 
 **Contribution:**
-- Vaishanvi Veerkumar: 34%
+- Vaishnavi Veerkumar: 34%
 - Sriram Venkatesh: 33%
 - Siddharth Pawar: 33%
 
@@ -21,6 +21,7 @@ WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS’ WORK IN OUR ASSIGNMENT AN
 - [Usage Instructions](#usage-instructions)
 - [Visualizations](#visualizations)
 - [Challenges & Solutions](#challenges--solutions)
+- [Video Link](#video--link)
 - [License](#license)
 
 ## Project Overview
@@ -174,7 +175,12 @@ Challenges & Solutions
 *   **Data Validation**: One challenge was ensuring the AI-generated responses were evaluated correctly. To solve this, we implemented cosine similarity on pre-trained embeddings and compared them with stored answers.
     
 *   **File Handling**: Managing multiple file types (audio, PDFs, images) from AWS S3 required additional parsing and formatting, which was solved by using libraries like PyPDF2 and PIL.
+
     
+Video Link
+----------------------
+https://youtu.be/kUk6Q0LkTsU
+
 
 License
 -------
