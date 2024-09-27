@@ -24,7 +24,7 @@ def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='Siddhivinayak@8',
+        password='admin0077',
         database='GAIA',
     )
     return connection
