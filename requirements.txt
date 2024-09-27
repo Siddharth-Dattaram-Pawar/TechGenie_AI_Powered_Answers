@@ -11,3 +11,4 @@ Pillow
 PyPDF2
 sentence-transformers
 scikit-learn
+cryptography
