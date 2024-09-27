@@ -1,0 +1,13 @@
+graphviz
+diagrams
+requests
+openai
+mysql-connector-python
+os
+huggingface-hub
+boto3
+pymysql
+Pillow
+PyPDF2
+sentence-transformers
+scikit-learn
