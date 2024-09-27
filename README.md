@@ -21,7 +21,7 @@ WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS’ WORK IN OUR ASSIGNMENT AN
 - [Usage Instructions](#usage-instructions)
 - [Visualizations](#visualizations)
 - [Challenges & Solutions](#challenges--solutions)
-- [Video Link](#video--link)
+- [Video Link](#video-link)
 - [License](#license)
 
 ## Project Overview
