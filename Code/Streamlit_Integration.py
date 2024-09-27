@@ -17,14 +17,14 @@ import seaborn as sns
 # Load pre-trained model for sentence embeddings
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
-openai.api_key = "sk-rcRLfezEqYqT76yYsFtT9E_QUWGBgheWXZOMVHpUNvT3BlbkFJh92hu_PqcVOaUo75GwdCrT4TJOUumpb65DYqgMRzgA"
+openai.api_key = ""
 
 # Mysql connection
 def connect_mysql():
     connection = pymysql.connect(
         host='localhost',
         user='root',
-        password='admin0077',
+        password='',
         database='GAIA',
     )
     return connection
@@ -43,8 +43,8 @@ def get_questions():
 # S3 connection
 def get_files_from_s3(task_id):
     s3 = boto3.client('s3', 
-                      aws_access_key_id='AKIAZQ3DQKBOTUPXE3TZ', 
-                      aws_secret_access_key='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', 
+                      aws_access_key_id='', 
+                      aws_secret_access_key='', 
                       region_name='us-east-2')
     bucket_name = 'gaia-benchmark-dataset'
     prefix = f'GAIA/2023/validation\\{task_id}'
