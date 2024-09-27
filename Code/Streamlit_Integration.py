@@ -250,126 +250,6 @@ def validation_status_chart(data):
     plt.title('Validation Status of Task IDs', fontsize=16)
     plt.tight_layout()
     st.pyplot(plt)
-
-def visualizations_page():
-
-    # Custom CSS for black background and white text
-    st.markdown("""
-        <style>
-        body {
-            background-color: #121212;
-            color: white;
-        }
-        .stSelectbox label {
-            font-size: 2.2em !important;
-            color: white !important;
-        }
-        .stTextInput>div>div>input, .stSelectbox>div>div>div>input {
-            color: black;
-        }
-        h1 {
-            font-family: "Amasis MT Pro", Arial, sans-serif;
-            text-align: center;
-            font-size: 3.5em;
-            color: #FFD700;
-            padding-top: 1em;
-            padding-bottom: 0.5em;
-        }
-        .stSelectbox, .stDataFrame {
-            background-color: #222222;
-            border-radius: 10px;
-        }
-        .stMarkdown {
-            color: white;
-        }
-        .stButton button {
-            background-color: #FFD700;
-            color: black;
-        }
-        .block-container {
-            padding-top: 3rem;
-            padding-bottom: 3rem;
-        }
-        .main, .block-container {
-            background-color: #121212;  /* This ensures the whole background is black */
-        }
-        .stMarkdown h2 {
-            color: #FFD700;
-        }
-        
-        label {
-            font-size: 1.25em; /* Adjust the font size (4 points larger) */
-            color: white;      /* White color for the label */
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    st.title("Visualizations")
-    data = get_visualization_data()
-
-    st.sidebar.title("Filter")
-    all_tasks = data['Task_No'].unique().tolist()
-
-    # Add "Select All" option
-    select_all = st.sidebar.checkbox("Select All")
-
-    if not select_all:
-        # Text input for task numbers
-        task_input = st.sidebar.text_input("Enter Task Numbers (comma-separated)", 
-                                           placeholder="e.g., 1,2,3-5,7")
-        
-        if task_input:
-            # Parse the input
-            selected_tasks = []
-            for part in task_input.split(','):
-                if '-' in part:
-                    start, end = map(int, part.split('-'))
-                    selected_tasks.extend(range(start, end + 1))
-                else:
-                    selected_tasks.append(int(part.strip()))
-            
-            selected_tasks = [task for task in selected_tasks if task in all_tasks]
-        else:
-            selected_tasks = []
-    else:
-        selected_tasks = all_tasks
-
-    # Filter data based on selection
-    filtered_data = data[data['Task_No'].isin(selected_tasks)]
-
-    # Display selected task IDs
-    if not select_all:
-        st.sidebar.write("Selected Task IDs:")
-        for task in selected_tasks:
-            task_id = data[data['Task_No'] == task]['task_id'].iloc[0]
-            st.sidebar.write(f"Task {task} (ID: {task_id})")
-
-    # Center content with margins
-    st.markdown("""
-        <style>
-            .reportview-container .main .block-container {
-                max-width: 1000px;
-                padding-top: 5rem;
-                padding-right: 5rem;
-                padding-left: 5rem;
-                padding-bottom: 5rem;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Visualizations
-    st.subheader("1. Number of Attempts vs Count of Task IDs")
-    attempts_count_chart(filtered_data)
-
-    st.subheader("2. Correct Responses: First Attempt vs Regenerated Attempts")
-    correct_responses_chart(filtered_data)
-
-    st.subheader("3. Validation Status of Task IDs")
-    validation_status_chart(filtered_data)
-
-    if st.button("Back to Home Page"):
-        st.session_state.page = 'main'
-        st.rerun()
         
 # Streamlit main page
 def main():
@@ -417,9 +297,9 @@ def main_page():
             color: black;
         }
         h1 {
-            font-family: "Amasis MT Pro", Arial, sans-serif;
+            font-family: "Times New Roman", Arial, sans-serif;
             text-align: center;
-            font-size: 3.5em;
+            font-size: 2.75em;
             color: #FFD700;
             padding-top: 1em;
             padding-bottom: 0.5em;
@@ -473,11 +353,11 @@ def main_page():
         file_names = get_files_from_s3(selected_task_id)
 
         # Display the question and the associated files from S3
-        st.write(f"**Selected Question:** {selected_question}")
-        st.write(f"**Task ID:** {selected_task_id}")
+        st.markdown(f"<u>**Selected Question:**</u> {selected_question}", unsafe_allow_html=True)
+        st.markdown(f"<u>**Task ID:**</u> {selected_task_id}", unsafe_allow_html=True)
         
         if file_names:
-            st.write(f"**Files in S3 for Task ID {selected_task_id}:**")
+            st.markdown(f"<u>**Files in S3 for Task ID**</u> {selected_task_id}:", unsafe_allow_html=True)
             for file_name in file_names:
                 st.write(f"- {file_name}")
                 display_file_from_s3(file_name)
@@ -540,7 +420,6 @@ def main_page():
         st.rerun()
 
 def compare_page():
-
     st.markdown("""
         <style>
         body {
@@ -555,9 +434,9 @@ def compare_page():
             color: black;
         }
         h1 {
-            font-family: "Amasis MT Pro", Arial, sans-serif;
+            font-family: "Times New Roman", Arial, sans-serif;
             text-align: center;
-            font-size: 3.5em;
+            font-size: 2.75em;
             color: #FFD700;
             padding-top: 1em;
             padding-bottom: 0.5em;
@@ -594,15 +473,15 @@ def compare_page():
     st.title("Open AI Response Comparison")
     
     if 'selected_question' in st.session_state:
-        st.write(f"**Selected Question:** {st.session_state.selected_question}")
-        st.write(f"**OpenAI Answer:** {st.session_state.openai_answer}")
-        st.write(f"**Database Answer:** {st.session_state.database_answer}")
-
+        st.markdown(f"<u>**Selected Question:**</u> {st.session_state.selected_question}", unsafe_allow_html=True)
+        st.markdown(f"<u>**OpenAI Answer:**</u> {st.session_state.openai_answer}", unsafe_allow_html=True)
+        st.markdown(f"<u>**Database Answer:**</u> {st.session_state.database_answer}", unsafe_allow_html=True)
+       
         if st.session_state.is_correct:
             st.markdown(
                 """
                 <div style="text-align: center; animation: blinker 1.5s linear infinite; color: Green; font-weight: bold;">
-                    ⚠️ Open AI response matches the database answer ⚠️
+                    Open AI response matches the database answer!
                 </div>
                 <style>
                 @keyframes blinker {
@@ -637,10 +516,7 @@ def compare_page():
         st.session_state.page = 'main'
         st.rerun()
 
-    
-
 def regenerate_answer_page():
-
     st.markdown("""
         <style>
         body {
@@ -655,9 +531,9 @@ def regenerate_answer_page():
             color: black;
         }
         h1 {
-            font-family: "Amasis MT Pro", Arial, sans-serif;
+            font-family: "Times New Roman", Arial, sans-serif;
             text-align: center;
-            font-size: 3.5em;
+            font-size: 2.75em;
             color: #FFD700;
             padding-top: 1em;
             padding-bottom: 0.5em;
@@ -695,7 +571,7 @@ def regenerate_answer_page():
 
     # Ensure the question is available in session state
     if 'selected_question' in st.session_state:
-        st.write(f"**Selected Question:** {st.session_state.selected_question}")
+        st.markdown(f"<u>**Selected Question:**</u> {st.session_state.selected_question}", unsafe_allow_html=True)
 
         # Prepare the prompt for OpenAI using the question, annotator steps, and associated files
         annotator_steps_result = get_annotator_steps(st.session_state.selected_task_id)
@@ -718,14 +594,13 @@ def regenerate_answer_page():
                 )
                 openai_answer = response.choices[0].text.strip()
                 st.session_state.openai_answer = openai_answer
-                st.write(f"**Task ID:** {st.session_state.selected_task_id}")
+                st.markdown(f"<u>**Task ID:**</u> {st.session_state.selected_task_id}", unsafe_allow_html=True)
 
                 # Display task details, annotator steps, and files
-                st.write(f"**Annotator Steps:** {annotator_steps}")
+                st.markdown(f"<u>**Annotator Steps:**</u> {annotator_steps}", unsafe_allow_html=True)
                 if 'associated_files' in st.session_state:
-                    st.write(f"**Associated Files:** {st.session_state.associated_files}")
-                st.write("**OpenAI Generated Answer:**")
-                st.write(openai_answer)
+                    st.markdown(f"<u>**Associated Files:**</u> {st.session_state.associated_files}", unsafe_allow_html=True)
+                st.markdown(f"<u>**OpenAI Generated Answer:**</u> {openai_answer}", unsafe_allow_html=True)
                 
                 # Compare the OpenAI answer with the database answer
                 if 'database_answer' in st.session_state:
@@ -733,9 +608,33 @@ def regenerate_answer_page():
                     st.session_state.is_correct = is_correct
 
                     if is_correct:
-                        st.success("The generated OpenAI answer matches the database answer.")
+                        st.markdown(
+                        """
+                        <div style="text-align: center; animation: blinker 1.5s linear infinite; color: Green; font-weight: bold;">
+                            Open AI response matches the database answer!
+                        </div>
+                        <style>
+                        @keyframes blinker {
+                            50% { opacity: 0; }
+                        }
+                        </style>
+                        """, 
+                        unsafe_allow_html=True
+                        )
                     else:
-                        st.error("The generated OpenAI answer does not match the database answer.")
+                        st.markdown(
+                        """
+                        <div style="text-align: center; animation: blinker 1.5s linear infinite; color: red; font-weight: bold;">
+                            ⚠️ Open AI response doesn`t match the database answer ⚠️
+                        </div>
+                        <style>
+                        @keyframes blinker {
+                            50% { opacity: 0; }
+                        }
+                        </style>
+                        """, 
+                        unsafe_allow_html=True
+                        )
             except Exception as e:
                 st.error(f"An error occurred while generating the answer: {str(e)}")
 
@@ -770,15 +669,159 @@ def regenerate_answer_page():
                         st.session_state.is_correct = is_correct
 
                         if is_correct:
-                            st.success("The regenerated OpenAI answer matches the database answer.")
+                            st.markdown(
+                            """
+                            <div style="text-align: center; animation: blinker 1.5s linear infinite; color: Green; font-weight: bold;">
+                                Open AI response matches the database answer!
+                            </div>
+                            <style>
+                            @keyframes blinker {
+                                50% { opacity: 0; }
+                            }
+                            </style>
+                            """, 
+                            unsafe_allow_html=True
+                            )
                         else:
-                            st.error("The regenerated OpenAI answer does not match the database answer.")
+                            st.markdown(
+                            """
+                            <div style="text-align: center; animation: blinker 1.5s linear infinite; color: red; font-weight: bold;">
+                                ⚠️ Open AI response doesn`t match the database answer ⚠️
+                            </div>
+                            <style>
+                            @keyframes blinker {
+                                50% { opacity: 0; }
+                            }
+                            </style>
+                            """, 
+                            unsafe_allow_html=True
+                            )
                 except Exception as e:
                     st.error(f"An error occurred while regenerating the answer: {str(e)}")
 
             if st.button("Go Home", key="go_home_button_alt"):
                 st.session_state.page = 'main'
                 st.rerun()
+                
+def visualizations_page():
+
+    # Custom CSS for black background and white text
+    st.markdown("""
+        <style>
+        body {
+            background-color: #FFFFFF;
+            color: black;
+        }
+        .stSelectbox label {
+            font-size: 2.2em !important;
+            color: white !important;
+        }
+        .stTextInput>div>div>input, .stSelectbox>div>div>div>input {
+            color: black;
+        }
+        h1 {
+            font-family: "Times New Roman", Arial, sans-serif;
+            text-align: center;
+            font-size: 2.75em;
+            color: #000000;
+            padding-top: 1em;
+            padding-bottom: 0.5em;
+        }
+        .stSelectbox, .stDataFrame {
+            background-color: #222222;
+            border-radius: 10px;
+        }
+        .stMarkdown {
+            color: black;
+        }
+        .stButton button {
+            background-color: #000000;
+            color: white;
+        }
+        .block-container {
+            padding-top: 3rem;
+            padding-bottom: 3rem;
+        }
+        .main, .block-container {
+            background-color: #FFFFFF; 
+        }
+        .stMarkdown h2 {
+            color: #000000;
+        }
+        
+        label {
+            font-size: 1.25em; /* Adjust the font size (4 points larger) */
+            color: black;      /* White color for the label */
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    st.title("Visualizations")
+    data = get_visualization_data()
+
+    st.sidebar.title("Filter")
+    all_tasks = data['Task_No'].unique().tolist()
+
+    # Add "Select All" option
+    select_all = st.sidebar.checkbox("Select All")
+
+    if not select_all:
+        # Text input for task numbers
+        task_input = st.sidebar.text_input("Enter Task Numbers (comma-separated)", 
+                                           placeholder="e.g., 1,2,3-5,7")
+        
+        if task_input:
+            # Parse the input
+            selected_tasks = []
+            for part in task_input.split(','):
+                if '-' in part:
+                    start, end = map(int, part.split('-'))
+                    selected_tasks.extend(range(start, end + 1))
+                else:
+                    selected_tasks.append(int(part.strip()))
+            
+            selected_tasks = [task for task in selected_tasks if task in all_tasks]
+        else:
+            selected_tasks = []
+    else:
+        selected_tasks = all_tasks
+
+    # Filter data based on selection
+    filtered_data = data[data['Task_No'].isin(selected_tasks)]
+
+    # Display selected task IDs
+    if not select_all:
+        st.sidebar.write("Selected Task IDs:")
+        for task in selected_tasks:
+            task_id = data[data['Task_No'] == task]['task_id'].iloc[0]
+            st.sidebar.write(f"Task {task} (ID: {task_id})")
+
+    # Center content with margins
+    st.markdown("""
+        <style>
+            .reportview-container .main .block-container {
+                max-width: 1000px;
+                padding-top: 7rem;
+                padding-right: 4in;
+                padding-left: 4in;
+                padding-bottom: 7rem;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Visualizations
+    st.subheader("1. Number of Attempts vs Count of Task IDs")
+    attempts_count_chart(filtered_data)
+
+    st.subheader("2. Correct Responses: First Attempt vs Regenerated Attempts")
+    correct_responses_chart(filtered_data)
+
+    st.subheader("3. Validation Status of Task IDs")
+    validation_status_chart(filtered_data)
+
+    if st.button("Back to Home Page"):
+        st.session_state.page = 'main'
+        st.rerun()
 
 if __name__ == "__main__":
     main()
