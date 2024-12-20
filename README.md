@@ -2,59 +2,53 @@
 
 This project involves developing a Streamlit application for model evaluation teams to select and evaluate test cases from the GAIA dataset against the OpenAI model. The application allows users to send context data and questions to the OpenAI model and compare the model's answers with the final answers from the metadata file.
 
-Codelab link - [link](https://codelabs-preview.appspot.com/?file_id=11Bv8yal4awS5ywv5cM-QZX0SG4z43PxAG1WWGQWo7o0#0)
+[![Codelabs](https://img.shields.io/badge/Codelabs-green?style=for-the-badge)](https://codelabs-preview.appspot.com/?file_id=11Bv8yal4awS5ywv5cM-QZX0SG4z43PxAG1WWGQWo7o0#0)
+
+Video Link
+----------------------
+https://youtu.be/kUk6Q0LkTsU
 
 ### Attestation
 
-WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS’ WORK IN OUR ASSIGNMENT AND ABIDE BY THE POLICIES LISTED IN THE STUDENT HANDBOOK.
+WE ATTEST THAT WE HAVEN'T USED ANY OTHER STUDENTS' WORK IN OUR ASSIGNMENT AND ABIDE BY THE POLICIES LISTED IN THE STUDENT HANDBOOK
 
-**Contribution:**
-- Vaishnavi Veerkumar: 34%
-- Sriram Venkatesh: 33%
-- Siddharth Pawar: 33%
+## Resources and Contribution
 
-## Table of Contents
+| Group Member        | Contribution (%) |
+|---------------------|------------------|
+| Siddharth Pawar     | 33.33%          |
+| Vaishnavi Veerkumar | 33.33%          |
+| Sriram Venkatesh    | 33.33%          |
 
-- [Project Overview](#project-overview)
-- [Technologies Used](#technologies-used)
-- [Installation](#installation)
-- [Application Workflow](#application-workflow)
-- [Data Flow and Backend Processes](#data-flow-and-backend-processes)
-- [Usage Instructions](#usage-instructions)
-- [Visualizations](#visualizations)
-- [Challenges & Solutions](#challenges--solutions)
-- [Video Link](#video-link)
-- [License](#license)
+
 
 ## Project Overview
 
-This application automates task validation based on predefined criteria stored in a MySQL database. It leverages OpenAI's API to generate answers for given tasks and compares them with the expected answers stored in the database using **cosine similarity**. The app also tracks the number of attempts made and visualizes task progress through bar charts and pie charts for better understanding of validation performance.
-
-### Features:
-- Task selection and submission via Streamlit interface.
-- Fetch answers from **AWS S3** and **MySQL**.
-- Cosine similarity-based validation of answers using **Sentence Transformers**.
-- Tracks number of attempts per task.
-- Various visualizations for performance analytics (correct attempts, validation status, etc.).
+This application automates task validation by leveraging predefined criteria stored in a MySQL database. It incorporates a robust system to retrieve and store metadata from Hugging Face into a PostgreSQL database, while associated unstructured data is uploaded to AWS S3 for seamless integration.
+A Streamlit-based frontend enables intuitive task exploration and OpenAI-powered querying, utilizing OpenAI's API to generate responses for given tasks and comparing them with the expected answers using advanced validation techniques. Cosine similarity is implemented with Sentence Transformers to assess answer accuracy, providing a reliable validation mechanism.
+Additionally, the application visualizes OpenAI query attempts and efficiency insights within Streamlit, using bar charts and pie charts to track task progress and performance metrics. It monitors the number of query attempts, offering clear insights into validation performance for enhanced decision-making.
 
 ## Technologies Used
 
-- **Streamlit**: Frontend framework
-- **MySQL**: Backend database for task metadata and answers
-- **AWS S3**: Storage for external files (audio, images, PDFs)
-- **OpenAI API**: For generating task responses
-- **Sentence Transformers**: For embedding and comparing sentences
-- **Matplotlib & Seaborn**: For data visualizations
-- **Boto3**: AWS S3 integration
-- **PyPDF2**: For PDF file reading
-- **Pandas**: Data handling and display
+| **Technology/Tool**     | **Purpose**                                                  |
+|--------------------------|--------------------------------------------------------------|
+| **Streamlit**            | Frontend framework for building interactive applications.    |
+| **MySQL DB**             | Backend for managing task IDs, task metadata, annotator steps, and database answers. |
+| **AWS S3**               | Storage solution for external files such as audio, images, and PDFs. |
+| **OpenAI API**           | Generating task responses based on inputs.                  |
+| **Sentence Transformers**| Generating embeddings and comparing sentences for analysis. |
+| **Matplotlib & Seaborn** | Creating data visualizations and graphical representations.  |
+| **Boto3**                | Integrating with AWS S3 for file upload and retrieval.       |
+| **PyPDF2**               | Reading and extracting data from PDF files.                 |
+| **Pandas**               | Handling, processing, and displaying structured data.       |
+
 
 ## Installation
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-username/task-genie.git
-   cd task-genie
+   git clone https://github.com/your-username/TechGenie_AI_Powered_Answers.git
+   cd TechGenie_AI_Powered_Answers
 2. **Setup Virtual Env**
     ```bash
     1.  python -m venv venvsource venv/bin/activate
@@ -75,103 +69,53 @@ This application automates task validation based on predefined criteria stored i
         
 6.  **OpenAI API Key**:
     
-    *   Update the openai.api\_key in the script with your OpenAI API key.
+    *   Update the openai_api_key in the script with your OpenAI API key.
         
+## Environment Variables
 
-Application Workflow
+Create a `.env` file with the following variables:
+
+### API Keys & AWS Setup
+
+```bash
+OPENAI_API_KEY=your_openai_api_key
+AWS_BUCKET_NAME=your_bucket_name
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_scret_access_key
+AWS_REGION=your_aws_region
+```
+
+## Application Workflow
 --------------------
 
-### Step 1: Streamlit Display
-
+Step 1: Streamlit Display
 *   On the homepage, the user selects a task from a dropdown that fetches questions stored in the **MySQL** database.
-    
 
-### Step 2: Generate Answers
-
+Step 2: Generate Answers
 *   Once a task is selected, the application uses the **OpenAI API** to generate an answer for the selected question.
     
-
-### Step 3: Cosine Similarity Check
-
+Step 3: Cosine Similarity Check
 *   The generated answer is compared with the correct answer from the database using cosine similarity. If the similarity is above a predefined threshold, the answer is validated.
-    
 
-### Step 4: Regenerate Answers
-
+Step 4: Regenerate Answers
 *   If the initial answer doesn't meet the threshold, the user can attempt to regenerate the answer. The number of attempts is tracked and updated in the MySQL database.
     
-
-### Step 5: Update Attempts & Validation
-
+Step 5: Update Attempts & Validation
 *   The application updates the number of attempts and the validation status (whether the answer matches the correct one) in the MySQL database.
     
-
-### Step 6: Visualizations
-
+Step 6: Visualizations
 *   A separate page displays various visualizations such as:
     
-    *   **Number of Attempts per Task** (Bar Chart)
-        
-    *   **Correct Responses: First Attempt vs Regenerated Attempts** (Bar Chart)
-        
-    *   **Validation Status of Task IDs** (Pie Chart)
+Number of Attempts per Task (Bar Chart)
+
+Correct Responses: First Attempt vs Regenerated Attempts (Bar Chart)
+
+Validation Status of Task IDs (Pie Chart)
         
 
-Data Flow and Backend Processes
--------------------------------
-
-1.  **Frontend Input**: Users interact with the app through Streamlit's UI, selecting tasks and generating answers.
-    
-2.  **Data Storage**:
-    
-    *   Task metadata (questions, correct answers, validation status, etc.) is stored in a **MySQL** database.
-        
-    *   Files such as PDFs, images, and audios related to tasks are stored in **AWS S3**.
-        
-3.  **Processing**:
-    
-    *   The application generates answers using **OpenAI** and compares them with the correct answer using **cosine similarity** from the **Sentence Transformers** library.
-        
-4.  **Output**:
-    
-    *   The result (validated or not) is stored back into MySQL.
-        
-    *   The user can view the validation status, number of attempts, and other metrics through data visualizations.
-        
-
-Usage Instructions
-------------------
-
-streamlit run main.py
-
-1.  **Task Selection**:
-    
-    *   Select a task from the dropdown to see the question.
-        
-2.  **Answer Generation**:
-    
-    *   Click on the "Generate Answer" button to receive an AI-generated answer from OpenAI.
-        
-3.  **Regenerate Answer**:
-    
-    *   If the initial answer is incorrect, click "Regenerate" to try again.
-        
-4.  **View Visualizations**:
-    
-    *   Visit the Visualizations page to see analytics on the number of attempts, validation status, etc.
-        
-
-Visualizations
---------------
-
-1.  **Number of Attempts per Task**:Displays a horizontal bar chart showing the number of attempts taken for each task.
-    
-2.  **Correct Responses: First Attempt vs Regenerated Attempts**:Bar chart comparing the number of correct answers on the first attempt versus those that required regeneration.
-    
-3.  **Validation Status of Task IDs**:Pie chart showing the percentage of tasks that have been validated versus those that haven’t.
     
 
-Challenges & Solutions
+## Challenges & Solutions
 ----------------------
 
 *   **Data Validation**: One challenge was ensuring the AI-generated responses were evaluated correctly. To solve this, we implemented cosine similarity on pre-trained embeddings and compared them with stored answers.
@@ -179,13 +123,19 @@ Challenges & Solutions
 *   **File Handling**: Managing multiple file types (audio, PDFs, images) from AWS S3 required additional parsing and formatting, which was solved by using libraries like PyPDF2 and PIL.
 
     
-Video Link
-----------------------
-https://youtu.be/kUk6Q0LkTsU
 
 
-License
+
+## License
 -------
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
+MIT License
+
+Copyright (c) 2024
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
