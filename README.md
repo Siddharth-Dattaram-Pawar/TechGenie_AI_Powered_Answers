@@ -28,6 +28,11 @@ This application automates task validation by leveraging predefined criteria sto
 A Streamlit-based frontend enables intuitive task exploration and OpenAI-powered querying, utilizing OpenAI's API to generate responses for given tasks and comparing them with the expected answers using advanced validation techniques. Cosine similarity is implemented with Sentence Transformers to assess answer accuracy, providing a reliable validation mechanism.
 Additionally, the application visualizes OpenAI query attempts and efficiency insights within Streamlit, using bar charts and pie charts to track task progress and performance metrics. It monitors the number of query attempts, offering clear insights into validation performance for enhanced decision-making.
 
+## Architecture Diagram:
+
+![image](https://github.com/user-attachments/assets/29a1627c-b2c9-4690-a262-1ea5d34e8ef2)
+
+
 ## Technologies Used
 
 | **Technology/Tool**     | **Purpose**                                                  |
